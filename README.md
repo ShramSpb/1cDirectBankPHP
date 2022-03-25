@@ -10,6 +10,7 @@
     require_once 'directbank.api.php';
     
 	$api = new AngelsIt\DirectBank1C();
+	$api->logon('ПарольОтБанкКлиента'); // Авторизируемся в банке
 	$data = [];
     $data['Account'] = '4XXXXXXXXXXXXXXXXXXXXXXXX6'; // Номер счет в банке
     $data['DateFrom']  = date('Y-m-d\T00:00:00');    // Сегодня с полуночи
