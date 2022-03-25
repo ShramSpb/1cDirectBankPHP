@@ -1,6 +1,9 @@
 <?php
 /**
  * @doc: https://github.com/1C-Company/DirectBank/
+ * @author Aleksey Petrishchev
+ * @company Angels IT
+ * @url https://angels-it.ru
  */
 
 namespace AngelsIt;
