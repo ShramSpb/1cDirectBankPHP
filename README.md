@@ -7,7 +7,7 @@
 ## Примеры
 ### Получение выписки
     
-    require_once 'directbank.api.php';
+    require_once 'directbank.v2.3.2.api.php';
     
 	$api = new AngelsIt\DirectBank1C();
 	$api->logon('ПарольОтБанкКлиента'); // Авторизируемся в банке
@@ -16,7 +16,8 @@
     $data['DateFrom']  = date('Y-m-d\T00:00:00');    // Сегодня с полуночи
     $data['DateTo']  = date('Y-m-d\TH:i:s');     // До текущего времени (не обязательно)
 	
-	$taskGUID = $api->doStatementRequest($data); // Передаем данные в банк, получем обратно ID задачи
+	$taskGUID = $api->doStatementRequest($data); // Передаем данные в банк, получем обратно ID задачи (однако)
+
 
     // Просматриваем готовые заданий
 	$requestTime = new DateTime(); // С какого момента смотрим задания
@@ -26,4 +27,21 @@
     if (in_array($taskGUID, $$completedGUIDs) ) {
         $xmlString = $api->getPackData($taskGUID); // Получем XML с выпиской из банка
     }
+
+
+В примере *$taskGUID* возвращается банком и по нему потом проверяется результат выписки.
+*Однако*, в реальности банки возвращают GUID запроса и по нему передают только статус (сделан или нет).
+По этому правильным алгоритмом будет получение всех ожидающих в очереди заданий через 
+	
+$api->getPackList()
+	
+И разбор каждого через 
+
+        $resp = $api->getPackList();
+        foreach($resp as $taskId) {
+            $xmlString = $api->getPackData($taskId);
+            $xml = simplexml_load_string($xmlString);
+            ... // разбор XML и поиск ответа на свой запрос
+        }
+
 

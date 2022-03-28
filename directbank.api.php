@@ -10,7 +10,7 @@ namespace AngelsIt;
 
 class ExceptionDirectBankError extends \Exception { }
 
-class DirectBank1C {
+class DirectBank1CBase {
 
 	var $setting_file = 'settings.xml'; // Файл с настройками
 
@@ -22,7 +22,7 @@ class DirectBank1C {
 	var $api_bank_data = [];
 	var $api_client_data = [];
 
-	var $api_version = '2.3.1';
+	var $api_version = '2.3.2';
 	var $api_user_agent = 'Angels IT DirectBank1C Lib';
 
 	var $allow_docKinds = [];
@@ -53,6 +53,18 @@ class DirectBank1C {
 			$this->setting_file = $setting_file;
 		}
 		$this->loadSettings();
+	}
+
+	public function getSettings($data) {
+		
+		$headers = [];
+		$headers[] = 'Account: ' . $data['Account'];
+		$headers[] = 'CustomerID : 0';
+		$headers[] = 'Inn: ' . $data['Inn'];
+		$headers[] = 'Bic: ' . $data['Bic'];
+
+		$data = $this->doRequest('POST', 'GetSettings ', [], $headers);
+		pr($data);
 	}
 
 
@@ -90,7 +102,7 @@ class DirectBank1C {
 			return $xml;
 		} elseif (isset($data->Error)) {
 			// Ошибка пакета
-			throw new ExceptionDirectBankError($data->Error->Description, $data->Error->Code);
+			throw new ExceptionDirectBankError($data->Error->Description, (int)$data->Error->Code);
 		} else {
 			throw new \Exception("Unknown error", 999);
 		}
@@ -138,10 +150,12 @@ class DirectBank1C {
 		$defaultData = [
 						'StatementType' => 0, 
 						'DateFrom' => (new \DateTime())->sub(new \DateInterval('P1D'))->format('Y-m-d\T00:00:00'),
+						'DateTo' => (new \DateTime())->format('Y-m-d\T23:59:59'),
 						];
 
 		$this->setDefaults($data, $defaultData);
 		$this->checkRequired($data, ['StatementType', 'Account', 'DateFrom']);
+        $this->setOrder($data,  ['StatementType', 'DateFrom', 'DateTo', 'Account'] );
 
 		// Заполняем данные для выписки
 		$payload = $xml->addChild('Data');
@@ -171,7 +185,7 @@ class DirectBank1C {
 	}
 
 
-	private function createTransportPacket($dockind, $xmlString) {
+	protected function createTransportPacket($dockind, $xmlString) {
 
 		$xml = new \SimpleXMLElement('<?xml version="1.0" encoding="utf-8"?><Packet></Packet>');
 
@@ -190,7 +204,9 @@ class DirectBank1C {
 		$sender->addAttribute('id', $this->api_client_data['id']);
 		$sender->addAttribute('name', $this->api_client_data['name']);
 		$sender->addAttribute('inn', $this->api_client_data['inn']);
-		$sender->addAttribute('kpp', $this->api_client_data['kpp']);
+		if ($this->api_client_data['kpp']) {
+			$sender->addAttribute('kpp', $this->api_client_data['kpp']);
+		}
 
 		//Recipient
 		$recipientRoot  = $xml->addChild('Recipient');
@@ -212,7 +228,7 @@ class DirectBank1C {
 	 * @param  string $rootName имя корневого элемента XML
 	 * @return SimpleXMLObject  объект SimpleXML
 	 */
-	private function createBaseXml($rootName = '') 	{
+	protected function createBaseXml($rootName = '') 	{
 		$xml = new \SimpleXMLElement('<?xml version="1.0" encoding="utf-8"?><'.$rootName.'></'.$rootName.'>');
 
 		// Header
@@ -229,7 +245,9 @@ class DirectBank1C {
 		$sender->addAttribute('id', $this->api_client_data['id']);
 		$sender->addAttribute('name', $this->api_client_data['name']);
 		$sender->addAttribute('inn', $this->api_client_data['inn']);
-		$sender->addAttribute('kpp', $this->api_client_data['kpp']);
+		if ( $this->api_client_data['kpp'] ) {
+			$sender->addAttribute('kpp', $this->api_client_data['kpp']);
+		}
 
 		//Recipient
 		$recipient  = $xml->addChild('Recipient');
@@ -255,7 +273,7 @@ class DirectBank1C {
 	/**
 	 * Загружаем настройки DirectBank
 	 */
-	private function loadSettings() {
+	protected function loadSettings() {
 		if (!file_exists($this->setting_file)) {
 			throw new \Exception("Config File Not Found", 1);
 		}
@@ -277,7 +295,12 @@ class DirectBank1C {
 		$this->api_client_data['id'] = (string)$xml->Recipient->Attributes()->id;
 		$this->api_client_data['name'] = (string)$xml->Recipient->Attributes()->name;
 		$this->api_client_data['inn'] = (string)$xml->Recipient->Attributes()->inn;
+		
 		$this->api_client_data['kpp'] = (string)$xml->Recipient->Attributes()->kpp;
+
+		if ($this->api_version != (string)$xml->Attributes()->formatVersion) {
+			throw new \Exception('Версия сервера и версия клиента не совпадают');
+		}
 
 	}
 
@@ -299,7 +322,7 @@ class DirectBank1C {
 			$this->api_sid = (string)$data->Success->LogonResponse->SID;
 		} elseif (isset($data->Error)) {
 			// Ошибка авторизации
-			throw new ExceptionDirectBankError($data->Error->Description, $data->Error->Code);
+			throw new ExceptionDirectBankError($data->Error->Description, (int)$data->Error->Code);
 		} else {
 			throw new \Exception("Unknown error", 999);
 		}
@@ -315,7 +338,7 @@ class DirectBank1C {
 	 * @param  boolean $raw    [description]
 	 * @return xml          ответ банка
 	 */
-	private function doRequest($type = "GET", $method = '', $dataXML = '', $headers = []) {
+	protected function doRequest($type = "GET", $method = '', $dataXML = '', $headers = []) {
 	    
 	    $ch = curl_init();
 	  	
@@ -415,7 +438,7 @@ class DirectBank1C {
 	 * @param array &$data       оригинальные данные
 	 * @param array $defaultData данные по умолчанию
 	 */
-	private function setDefaults(&$data, $defaultData = []) {
+	protected function setDefaults(&$data, $defaultData = []) {
 		foreach ($defaultData as $k=>$v) {
 			if (!isset($data[$k])) {
 				$data[$k] = $v;
@@ -426,7 +449,7 @@ class DirectBank1C {
 	/**
 	 * Проверка обязательных данных
 	 */
-	private function checkRequired($data = [], $keys = []) {
+	protected function checkRequired($data = [], $keys = []) {
 		$errors = [];
 		foreach($keys as $k) {
 			if (!isset($data[$k]) ) {
@@ -436,6 +459,19 @@ class DirectBank1C {
 
 		if (!empty($errors)) {
 			throw new \Exception('Не хватает обязательных параметров запроса: ' . implode(', ', $errors), 20);
+		}
+	}
+
+	/**
+	 * Упорядочиваем элементы массива
+	 * @param array &$data    исходный массив
+	 * @param array $orderArr нужный порядок элементов
+	 */
+	protected function setOrder(&$data, $orderArr) {
+		$tmp = $data;
+		$data = [];
+		foreach($orderArr as $k ) {
+			$data[$k] = $tmp[$k];
 		}
 	}
 
