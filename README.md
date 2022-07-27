@@ -25,7 +25,7 @@
 	$requestTime->sub(new DateInterval('PT5M')); // Если вдруг часы банка и наши не синхронизированы
 	$completedGUIDs = $api->getPackList( $requestTime->format('d.m.Y H:i:s') ); // Получаем список готовых заданий
 
-    if (in_array($taskGUID, $$completedGUIDs) ) {
+    if (in_array($taskGUID, $completedGUIDs) ) {
         $xmlString = $api->getPackData($taskGUID); // Получем XML с выпиской из банка
     }
 
