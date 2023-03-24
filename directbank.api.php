@@ -298,6 +298,10 @@ class DirectBank1CBase {
 		
 		$this->api_client_data['kpp'] = (string)$xml->Recipient->Attributes()->kpp;
 
+		if ( $this->api_client_data['kpp'] == "" ) {
+			throw new \Exception("Не указан KPP в файле конфигурации. Подставьте КПП банка!");
+		}
+
 		if ($this->api_version != (string)$xml->Attributes()->formatVersion) {
 			throw new \Exception('Версия сервера и версия клиента не совпадают');
 		}
