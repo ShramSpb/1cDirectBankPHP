@@ -10,11 +10,5 @@ namespace AngelsIt;
 require_once 'directbank.api.php';
 
 class DirectBank1C extends DirectBank1CBase {
-    var $api_version = '2.2.2';
-
+    public $api_version = '2.2.2';
 }
-
-
-
-
-?>
